@@ -21,54 +21,126 @@ class Renderer {
         this.enable_animation = false;  // <-- disabled for easier debugging; enable for animation
         this.start_time = null;
         this.prev_time = null;
+        this.rotate = new Matrix(4, 4);
+        this.rotationfactor = 0.01;
+        this.center = new Vector(0, 0, 0);
     }
 
     //
     updateTransforms(time, delta_time) {
         // TODO: update any transformations needed for animation
+        let x = new Matrix(4, 4);
+        let y = new Matrix(4, 4);
+        let z = new Matrix(4, 4);
+        CG.mat4x4RotateX(x, this.rotationfactor * delta_time);
+        CG.mat4x4RotateY(y, this.rotationfactor * delta_time);
+        CG.mat4x4RotateZ(z, this.rotationfactor * delta_time);
     }
 
     //
     rotateLeft() {
-
+        let v = new Vector(0, 1, 0);
+        document.addEventListener('keydown', (rotateLeftHandler) => {
+            if (rotateLeftHandler.key === 'ArrowLeft') {
+                this.rotate = CG.mat4x4RotateX(v, -this.rotationfactor);
+            }
+        });
     }
     
     //
     rotateRight() {
-
+        let v = new Vector(0, 1, 0);
+        document.addEventListener('keydown', (rotateRightHandler) => {
+            if (rotateRightHandler.key === 'ArrowRight') {
+                this.rotate = CG.mat4x4RotateX(v, this.rotationfactor);
+            }
+        });
     }
     
     //
     moveLeft() {
-
+        let n = new Vector(1, 0, 0);
+        document.addEventListener('keydown', (moveLeftHandler) => {
+            if (moveLeftHandler.key === 'A') {
+                this.translate = CG.mat4x4Translate(n, -this.translationfactor);
+            }
+        });
     }
     
     //
-    moveRight() {
-
+    moveRight() {     
+        let n = new Vector(1, 0, 0);
+        document.addEventListener('keydown', (moveRightHandler) => {
+            if (moveRightHandler.key === 'D') {
+                this.translate = CG.mat4x4Translate(n, this.translationfactor);
+            }
+        });
     }
     
     //
     moveBackward() {
-
+        let n = new Vector(0, 0, 1);
+        document.addEventListener('keydown', (moveBackwardHandler) => {
+            if (moveBackwardHandler.key === 'S') {
+                this.translate = CG.mat4x4Translate(n, -this.translationfactor);
+            }
+        });
     }
     
     //
     moveForward() {
-
+        let n = new Vector(0, 0, 1);
+        document.addEventListener('keydown', (moveForwardHandler) => {
+            if (moveForwardHandler.key === 'W') {
+                this.translate = CG.mat4x4Translate(n, this.translationfactor);
+            }
+        });
     }
 
     //
     draw() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Load the scene data from the JSON file
+        let sceneData = require('./sample_scene.json');
 
+        // Extract the PRP, SRP, VUP, and clip values from the scene data
+        let prp = sceneData.prp;
+        let srp = sceneData.srp;
+        let vup = sceneData.vup;
+        let clip = sceneData.clip;
+
+        // Compute the perspective projection matrix
+        let perspectiveMatrix = mat4x4Perspective(prp, srp, vup, clip);
+
+        // For each model
+        for (let model of this.models) {
+            // For each vertex
+            for (let vertex of model.vertices) {
+                // transform endpoints to canonical view volume
+                let transformedVertex = CG.mat4x4Multiply(perspectiveMatrix, vertex);
+
+                // For each line segment in each edge
+                for (let edge of model.edges) {
+                    // clip in 3D
+                    let clippedLine = this.clipLinePerspective({ pt0: transformedVertex, pt1: edge }, this.z_min);
+                    if (clippedLine) {
+                        // project to 2D
+                        let projectedLine = this.projectTo2D(clippedLine);
+
+                        // draw line
+                        this.drawLine(projectedLine);
+                    }
+                }
+            }
+        }
         // TODO: implement drawing here!
         // For each model
         //   * For each vertex
         //     * transform endpoints to canonical view volume
         //   * For each line segment in each edge
         //     * clip in 3D
-        //     * project to 2D
+        //     * project to 2D (i.e. divide the endpoints by their w component)
         //     * translate/scale to viewport (i.e. window)
         //     * draw line
     }
@@ -111,8 +183,50 @@ class Renderer {
         let out1 = this.outcodePerspective(p1, z_min);
         
         // TODO: implement clipping here!
-        
-        return result;
+        while (true) {
+            if (!(out0 | out1)) { // Bitwise OR, if both outcodes are 0, trivially accept
+                return result = { pt0: p0, pt1: p1 };
+            } else if (out0 & out1) { // Bitwise AND, if not 0, trivially reject
+                return result = null;
+            } else {
+                let out = out0 ? out0 : out1;
+                let x, y, z;
+    
+                if (out & LEFT) { // point is to the left of the clip window
+                    x = p0.x + (p1.x - p0.x) * (p0.z - p0.x) / (p1.z - p1.x);
+                    y = p0.y + (p1.y - p0.y) * (p0.z - p0.x) / (p1.z - p1.x);
+                    z = p0.z;
+                } else if (out & RIGHT) { // point is to the right of the clip window
+                    x = p0.x + (p1.x - p0.x) * (-p0.z - p0.x) / (p1.z - p1.x);
+                    y = p0.y + (p1.y - p0.y) * (-p0.z - p0.x) / (p1.z - p1.x);
+                    z = -p0.z;
+                } else if (out & BOTTOM) { // point is below the clip window
+                    x = p0.x + (p1.x - p0.x) * (p0.z - p0.y) / (p1.z - p1.y);
+                    y = p0.y + (p1.y - p0.y) * (p0.z - p0.y) / (p1.z - p1.y);
+                    z = p0.z;
+                } else if (out & TOP) { // point is above the clip window
+                    x = p0.x + (p1.x - p0.x) * (-p0.z - p0.y) / (p1.z - p1.y);
+                    y = p0.y + (p1.y - p0.y) * (-p0.z - p0.y) / (p1.z - p1.y);
+                    z = -p0.z;
+                } else if (out & FAR) { // point is behind the viewer
+                    x = p0.x + (p1.x - p0.x) * (-1.0 - p0.z) / (p1.z - p0.z);
+                    y = p0.y + (p1.y - p0.y) * (-1.0 - p0.z) / (p1.z - p0.z);
+                    z = -1.0;
+                } else if (out & NEAR) { // point is in front of the viewer
+                    x = p0.x + (p1.x - p0.x) * (z_min - p0.z) / (p1.z - p0.z);
+                    y = p0.y + (p1.y - p0.y) * (z_min - p0.z) / (p1.z - p0.z);
+                    z = z_min;
+                }
+    
+                if (out === out0) { // update start point
+                    p0 = new Vector4(x, y, z, 1);
+                    out0 = this.outcodePerspective(p0, z_min);
+                } else { // update end point
+                    p1 = new Vector4(x, y, z, 1);
+                    out1 = this.outcodePerspective(p1, z_min);
+                }
+            }
+        }
     }
 
     //
