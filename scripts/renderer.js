@@ -22,7 +22,9 @@ class Renderer {
         this.start_time = null;
         this.prev_time = null;
         this.rotate = new Matrix(4, 4);
-        this.rotationfactor = 0.01;
+        this.rotationfactor = 0.1;
+        this.translate = new Matrix(4, 4);
+        this.translationfactor = 0.1;
         this.center = new Vector(0, 0, 0);
     }
 
@@ -39,62 +41,119 @@ class Renderer {
 
     //
     rotateLeft() {
-        let v = new Vector(0, 1, 0);
-        document.addEventListener('keydown', (rotateLeftHandler) => {
-            if (rotateLeftHandler.key === 'ArrowLeft') {
-                this.rotate = CG.mat4x4RotateX(v, -this.rotationfactor);
-            }
-        });
+        let n = this.scene.view.prp.subtract(this.scene.view.srp);
+        n.normalize();
+        // n = norm(PRP - SRP)
+        
+        let u = this.scene.view.vup.cross(n);
+        u.normalize();
+        // u = norm(VUP x n)
+    
+        let v = n.cross(u);
+        v.normalize();
+        // v = n x u
+
+        // You can align the u,v,n axis with x,y,z axis and use the corresponding rotation matrix
+        // rotation function to rotate the camera
+
+        // R = [u1, u2, u3, 0]
+        //     [v1, v2, v3, 0]
+        //     [n1, n2, n3, 0]
+        //     [0, 0, 0, 1]
+
+        // once aligned you can then reverse it back to the original u,v,n but keep one
+        // changed one rotated value the same 
+
+        this.rotate = CG.mat4x4RotateX(v, -this.rotationfactor);
     }
     
     //
     rotateRight() {
-        let v = new Vector(0, 1, 0);
-        document.addEventListener('keydown', (rotateRightHandler) => {
-            if (rotateRightHandler.key === 'ArrowRight') {
-                this.rotate = CG.mat4x4RotateX(v, this.rotationfactor);
-            }
-        });
+        let n = this.scene.view.prp.subtract(this.scene.view.srp);
+        n.normalize();
+        // n = norm(PRP - SRP)
+        
+        let u = this.scene.view.vup.cross(n);
+        u.normalize();
+        // u = norm(VUP x n)
+    
+        let v = n.cross(u);
+        v.normalize();
+        // v = n x u
+
+        this.rotate = CG.mat4x4RotateX(v, this.rotationfactor);
     }
     
     //
     moveLeft() {
-        let n = new Vector(1, 0, 0);
-        document.addEventListener('keydown', (moveLeftHandler) => {
-            if (moveLeftHandler.key === 'A') {
-                this.translate = CG.mat4x4Translate(n, -this.translationfactor);
-            }
-        });
+        let n = this.scene.view.prp.subtract(this.scene.view.srp);
+        n.normalize();
+        // n = norm(PRP - SRP)
+        
+        let u = this.scene.view.vup.cross(n);
+        u.normalize();
+        // u = norm(VUP x n)
+    
+        let v = n.cross(u);
+        v.normalize();
+        // v = n x u
+
+        // use vector subtraction to move the camera to the left
+        this.translate = CG.mat4x4Translate(n, -this.translationfactor);
     }
     
     //
     moveRight() {     
-        let n = new Vector(1, 0, 0);
-        document.addEventListener('keydown', (moveRightHandler) => {
-            if (moveRightHandler.key === 'D') {
-                this.translate = CG.mat4x4Translate(n, this.translationfactor);
-            }
-        });
+        let n = this.scene.view.prp.subtract(this.scene.view.srp);
+        n.normalize();
+        // n = norm(PRP - SRP)
+        
+        let u = this.scene.view.vup.cross(n);
+        u.normalize();
+        // u = norm(VUP x n)
+    
+        let v = n.cross(u);
+        v.normalize();
+        // v = n x u
+
+        // use vector addition to move the camera to the right
+        this.translate = CG.mat4x4Translate(n, this.translationfactor);
     }
     
     //
     moveBackward() {
-        let n = new Vector(0, 0, 1);
-        document.addEventListener('keydown', (moveBackwardHandler) => {
-            if (moveBackwardHandler.key === 'S') {
-                this.translate = CG.mat4x4Translate(n, -this.translationfactor);
-            }
-        });
+        let n = this.scene.view.prp.subtract(this.scene.view.srp);
+        n.normalize();
+        // n = norm(PRP - SRP)
+        
+        let u = this.scene.view.vup.cross(n);
+        u.normalize();
+        // u = norm(VUP x n)
+    
+        let v = n.cross(u);
+        v.normalize();
+        // v = n x u
+
+        // use vector subtraction to move the camera backwards
+        this.translate = CG.mat4x4Translate(n, -this.translationfactor);
     }
     
     //
     moveForward() {
-        let n = new Vector(0, 0, 1);
-        document.addEventListener('keydown', (moveForwardHandler) => {
-            if (moveForwardHandler.key === 'W') {
-                this.translate = CG.mat4x4Translate(n, this.translationfactor);
-            }
-        });
+        let n = this.scene.view.prp.subtract(this.scene.view.srp);
+        n.normalize();
+        // n = norm(PRP - SRP)
+        
+        let u = this.scene.view.vup.cross(n);
+        u.normalize();
+        // u = norm(VUP x n)
+    
+        let v = n.cross(u);
+        v.normalize();
+        // v = n x u
+
+        // use vector addition to move the camera forwards
+        this.translate = CG.mat4x4Translate(n, this.translationfactor);
     }
 
     //
@@ -187,7 +246,7 @@ class Renderer {
             if (!(out0 | out1)) { // Bitwise OR, if both outcodes are 0, trivially accept
                 return result = { pt0: p0, pt1: p1 };
             } else if (out0 & out1) { // Bitwise AND, if not 0, trivially reject
-                return result = null;
+                return result;
             } else {
                 let out = out0 ? out0 : out1;
                 let x, y, z;
