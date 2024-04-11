@@ -62,7 +62,7 @@ class Renderer {
         //     [0, 0, 0, 1]
 
         // once aligned you can then reverse it back to the original u,v,n but keep one
-        // changed one rotated value the same 
+        // changed one rotated value the same
 
         this.rotate = CG.mat4x4RotateX(v, -this.rotationfactor);
     }
@@ -178,11 +178,13 @@ class Renderer {
             for (let vertex of model.vertices) {
                 // transform endpoints to canonical view volume
                 let transformedVertex = CG.mat4x4Multiply(perspectiveMatrix, vertex);
-
                 // For each line segment in each edge
                 for (let edge of model.edges) {
                     // clip in 3D
-                    let clippedLine = this.clipLinePerspective({ pt0: transformedVertex, pt1: edge }, this.z_min);
+                    let clippedLine = this.clipLinePerspective({ pt0: transformedVertex, pt1: edge }, z_min);
+
+
+
                     if (clippedLine) {
                         // project to 2D
                         let projectedLine = this.projectTo2D(clippedLine);
@@ -250,40 +252,47 @@ class Renderer {
             } else {
                 let out = out0 ? out0 : out1;
                 let x, y, z;
-    
-                if (out & LEFT) { // point is to the left of the clip window
-                    x = p0.x + (p1.x - p0.x) * (p0.z - p0.x) / (p1.z - p1.x);
-                    y = p0.y + (p1.y - p0.y) * (p0.z - p0.x) / (p1.z - p1.x);
-                    z = p0.z;
-                } else if (out & RIGHT) { // point is to the right of the clip window
-                    x = p0.x + (p1.x - p0.x) * (-p0.z - p0.x) / (p1.z - p1.x);
-                    y = p0.y + (p1.y - p0.y) * (-p0.z - p0.x) / (p1.z - p1.x);
-                    z = -p0.z;
-                } else if (out & BOTTOM) { // point is below the clip window
-                    x = p0.x + (p1.x - p0.x) * (p0.z - p0.y) / (p1.z - p1.y);
-                    y = p0.y + (p1.y - p0.y) * (p0.z - p0.y) / (p1.z - p1.y);
-                    z = p0.z;
-                } else if (out & TOP) { // point is above the clip window
-                    x = p0.x + (p1.x - p0.x) * (-p0.z - p0.y) / (p1.z - p1.y);
-                    y = p0.y + (p1.y - p0.y) * (-p0.z - p0.y) / (p1.z - p1.y);
-                    z = -p0.z;
-                } else if (out & FAR) { // point is behind the viewer
-                    x = p0.x + (p1.x - p0.x) * (-1.0 - p0.z) / (p1.z - p0.z);
-                    y = p0.y + (p1.y - p0.y) * (-1.0 - p0.z) / (p1.z - p0.z);
-                    z = -1.0;
-                } else if (out & NEAR) { // point is in front of the viewer
-                    x = p0.x + (p1.x - p0.x) * (z_min - p0.z) / (p1.z - p0.z);
-                    y = p0.y + (p1.y - p0.y) * (z_min - p0.z) / (p1.z - p0.z);
-                    z = z_min;
+                let x0 = p0.x;
+                let y0 = p0.y;
+                let z0 = p0.z;
+                let x1 = p1.x;
+                let y1 = p1.y;
+                let z1 = p1.z;
+                let deltaX = p1.x - p0.x;
+                let deltaY = p1.y - p0.y;
+                let deltaZ = p1.z - p0.z;
+
+
+                if (out & LEFT) {
+                    let t = (-x0 + z0) / (deltaX - deltaZ);
+                    x = x0 + t * deltaX;
+                }
+
+                if (out & RIGHT) {
+                    let t = (x0 + z0) / (-deltaX - deltaZ);
+                    x = x0 + t * deltaX;
+                }
+
+                if (out & BOTTOM) {
+                    let t = (-y0 + z0) / (deltaY - deltaZ);
+                    y = y0 + t * deltaY;
+                }
+
+                if (out & TOP) {
+                    let t = (y0 + z0) / (-deltaY - deltaZ);
+                    y = y0 + t * deltaY;
+                }
+
+                if (out & NEAR) {
+                    let t = (z0 - z_min) / (-deltaZ);
+                    z = z0 + t * deltaZ;
+                }
+
+                if (out & FAR) {
+                    let t = (-z0 - 1) / (deltaZ);
+                    z = z0 + t * deltaZ;
                 }
     
-                if (out === out0) { // update start point
-                    p0 = new Vector4(x, y, z, 1);
-                    out0 = this.outcodePerspective(p0, z_min);
-                } else { // update end point
-                    p1 = new Vector4(x, y, z, 1);
-                    out1 = this.outcodePerspective(p1, z_min);
-                }
             }
         }
     }
