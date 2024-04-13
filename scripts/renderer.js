@@ -13,6 +13,7 @@ class Renderer {
     // canvas:              object ({id: __, width: __, height: __})
     // scene:               object (...see description on Canvas)
     constructor(canvas, scene) {
+        this.canvas = canvas;
         this.canvas = document.getElementById(canvas.id);
         this.canvas.width = canvas.width;
         this.canvas.height = canvas.height;
@@ -159,15 +160,25 @@ class Renderer {
     //
     draw() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        
-        // Load the scene data from the JSON file
-        let sceneData = require('./sample_scene.json');
+        //
+        let Nper = CG.mat4x4Perspective(this.scene.view.prp, this.scene.view.srp, this.scene.view.vup, this.scene.view.clip);
+        let Mper = CG.mat4x4MPer();
+
+        // create a 4x4 matrix to translate/scale projected vertices to the viewport (window)
+        let changeToViewPort = CG.mat4x4Viewport(this.canvas.width, this.canvas.height);
+        let storedPoints = [];
+
+        // Clip against canonical view frustum
+        let z_min = -(this.scene.view.clip[4] / this.scene.view.clip[5]);
+        // Left: x = z
+        // Right: x = -z
+        // Bottom: y = z
+        // Top: y = -z
+        // Front: z = z_min
+        // Back: z = -1
+
 
         // Extract the PRP, SRP, VUP, and clip values from the scene data
-        let prp = sceneData.prp;
-        let srp = sceneData.srp;
-        let vup = sceneData.vup;
-        let clip = sceneData.clip;
 
         // Compute the perspective projection matrix
         let perspectiveMatrix = mat4x4Perspective(prp, srp, vup, clip);
@@ -177,7 +188,7 @@ class Renderer {
             // For each vertex
             for (let vertex of model.vertices) {
                 // transform endpoints to canonical view volume
-                let transformedVertex = CG.mat4x4Multiply(perspectiveMatrix, vertex);
+                changeToViewPort = CG.mat4x4Multiply(changeToViewPort, vertex);
                 // For each line segment in each edge
                 for (let edge of model.edges) {
                     // clip in 3D
@@ -188,13 +199,18 @@ class Renderer {
                     if (clippedLine) {
                         // project to 2D
                         let projectedLine = this.projectTo2D(clippedLine);
+                        let projectedPt0X = projectedLine.pt0.x;
+                        let projectedPt0Y = projectedLine.pt0.y;
+                        let projectedPt1X = projectedLine.pt1.x;
+                        let projectedPt1Y = projectedLine.pt1.y;
 
                         // draw line
-                        this.drawLine(projectedLine);
+                        this.drawLine(projectedPt0X, projectedPt0Y, projectedPt1X, projectedPt1Y );
                     }
                 }
             }
         }
+        
         // TODO: implement drawing here!
         // For each model
         //   * For each vertex
@@ -204,6 +220,14 @@ class Renderer {
         //     * project to 2D (i.e. divide the endpoints by their w component)
         //     * translate/scale to viewport (i.e. window)
         //     * draw line
+        
+    }
+
+    // Project to 2D
+    projectTo2D(vertex) {
+        return { pt0: { x: vertex.pt0.x / vertex.pt0.w, y: vertex.pt0.y / vertex.pt0.w },
+                 pt1: { x: vertex.pt1.x / vertex.pt1.w, y: vertex.pt1.y / vertex.pt1.w } };
+        
     }
 
     // Get outcode for a vertex

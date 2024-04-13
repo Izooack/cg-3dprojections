@@ -1,0 +1,28 @@
+{
+    "view": {
+        "prp": [0, 10, -5],
+        "srp": [-20, 15, -40],
+        "vup": [1, 1, 0],
+        "clip": [-12, 6, -12, 6, 10, 300]
+    },
+    "models": [
+        {
+            "type": "cone",
+            "center": [-150, -30, -60],
+            "radius": 10,
+            "height": 50,
+            "sides": 30
+        },
+        {
+            "type": "sphere",
+            "center": [-10, 0, -60],
+            "radius": 5,
+            "slices": 3,
+            "stacks": 3,
+            "animation": {
+                "axis": "x",
+                "rps": 0.5
+            }
+        }
+    ]
+}
