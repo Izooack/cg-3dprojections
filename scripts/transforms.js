@@ -57,8 +57,8 @@ function mat4x4Perspective(prp, srp, vup, clip) {
                         [0, 0, sPerZ, 0],
                         [0, 0, 0, 1]];
 
-    let projectionMatrix = Matrix.multiply([shearMatrixOnZ, scaleMatrix]);
-    let viewportMatrix = Matrix.multiply([translatePRPorigin, rotateVRCAlignMatrix]);
+    let projectionMatrix = Matrix.multiply([scaleMatrix, shearMatrixOnZ]);
+    let viewportMatrix = Matrix.multiply([rotateVRCAlignMatrix, translatePRPorigin]);
     let transform = Matrix.multiply([projectionMatrix, viewportMatrix]);
     return transform;
 }

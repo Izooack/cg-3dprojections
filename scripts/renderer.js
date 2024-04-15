@@ -26,7 +26,7 @@ class Renderer {
         this.rotationfactor = 0.1;
         this.translate = new Matrix(4, 4);
         this.translationfactor = 0.1;
-        this.center = new Vector(0, 0, 0);
+        this.center = new Vector(3);
     }
 
     //
@@ -35,6 +35,14 @@ class Renderer {
         let x = new Matrix(4, 4);
         let y = new Matrix(4, 4);
         let z = new Matrix(4, 4);
+
+        for (let i = 0; i < this.scene.models.length; i++) {
+            if (this.scene.models[i].hasOwnProperty('animation')) {
+                let model = this.scene.models[i];
+                let center = this.scene.models[i].center;
+            }
+
+        }
         CG.mat4x4RotateX(x, this.rotationfactor * delta_time);
         CG.mat4x4RotateY(y, this.rotationfactor * delta_time);
         CG.mat4x4RotateZ(z, this.rotationfactor * delta_time);
@@ -57,6 +65,12 @@ class Renderer {
         // You can align the u,v,n axis with x,y,z axis and use the corresponding rotation matrix
         // rotation function to rotate the camera
 
+        let alignUVNMatrix = new Matrix(4, 4);
+        alignUVNMatrix.values = [[u.values[0], u.values[1], u.values[2], 0],
+                                 [v.values[0], v.values[1], v.values[2], 0],
+                                 [n.values[0], n.values[1], n.values[2], 0],
+                                 [0, 0, 0, 1]];
+
         // R = [u1, u2, u3, 0]
         //     [v1, v2, v3, 0]
         //     [n1, n2, n3, 0]
@@ -65,7 +79,8 @@ class Renderer {
         // once aligned you can then reverse it back to the original u,v,n but keep one
         // changed one rotated value the same
 
-        this.rotate = CG.mat4x4RotateX(v, -this.rotationfactor);
+        this.rotate = CG.mat4x4RotateX(u, -this.rotationfactor);
+        this.rotate = CG.mat4x4Multiply(this.rotate, alignUVNMatrix);
     }
     
     //
@@ -160,13 +175,23 @@ class Renderer {
     //
     draw() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        //
+        // TODO: implement drawing here!
+        // For each model
+        //   * For each vertex
+        //     * transform endpoints to canonical view volume
+        //   * For each line segment in each edge
+        //     * clip in 3D
+        //     * project to 2D (i.e. divide the endpoints by their w component)
+        //     * translate/scale to viewport (i.e. window)
+        //     * draw line
+
         let Nper = CG.mat4x4Perspective(this.scene.view.prp, this.scene.view.srp, this.scene.view.vup, this.scene.view.clip);
         let Mper = CG.mat4x4MPer();
 
         // create a 4x4 matrix to translate/scale projected vertices to the viewport (window)
         let changeToViewPort = CG.mat4x4Viewport(this.canvas.width, this.canvas.height);
-        let storedPoints = [];
+        let storedTransformedEndPoints = [];
+        let storedLines = [];
 
         // Clip against canonical view frustum
         let z_min = -(this.scene.view.clip[4] / this.scene.view.clip[5]);
@@ -180,51 +205,50 @@ class Renderer {
 
         // Extract the PRP, SRP, VUP, and clip values from the scene data
 
-        // Compute the perspective projection matrix
-        let perspectiveMatrix = mat4x4Perspective(prp, srp, vup, clip);
+        // Assume you use type Generic with vertices and edges
 
         // For each model
-        for (let model of this.models) {
+        for (let i = 0; i < this.scene.models.length; i++) {
             // For each vertex
-            for (let vertex of model.vertices) {
+            for (let vertex of this.scene.models[i].vertices) {
+                console.log(vertex);
                 // transform endpoints to canonical view volume
-                changeToViewPort = CG.mat4x4Multiply(changeToViewPort, vertex);
-                // For each line segment in each edge
-                for (let edge of model.edges) {
-                    // clip in 3D
-                    let clippedLine = this.clipLinePerspective({ pt0: transformedVertex, pt1: edge }, z_min);
-
-
-
-                    if (clippedLine) {
-                        // project to 2D
-                        let projectedLine = this.projectTo2D(clippedLine);
-                        let projectedPt0X = projectedLine.pt0.x;
-                        let projectedPt0Y = projectedLine.pt0.y;
-                        let projectedPt1X = projectedLine.pt1.x;
-                        let projectedPt1Y = projectedLine.pt1.y;
-
-                        // draw line
-                        this.drawLine(projectedPt0X, projectedPt0Y, projectedPt1X, projectedPt1Y );
-                    }
-                }
+                let transformedVertex = Matrix.multiply([Nper, vertex]);
+                storedTransformedEndPoints.push(transformedVertex);
             }
+
+            // For each line segment in each edge
+            for (let edge of this.scene.models[i].edges) {
+                // clip in 3D
+                // let clippedLine = this.clipLinePerspective(edge, z_min);
+                console.log(edge);
+                for (let j = 0; j < this.scene.models.edges; j++) {
+                    let edge = (j,j+1);
+                    storedLines.push(edge);
+
+                    // Matrix.multiply([nPer, this.rotate[i], this.scene.models[m].vertices[]])
+                }
+
+
+
+                // if (clippedLine) {
+                //     // project to 2D
+                //     let projectedLine = clippedLine;
+                //     let projectedPt0X = projectedLine.pt0.x;
+                //     let projectedPt0Y = projectedLine.pt0.y;
+                //     let projectedPt1X = projectedLine.pt1.x;
+                //     let projectedPt1Y = projectedLine.pt1.y;
+
+                //     // draw line
+                //     this.drawLine(projectedPt0X, projectedPt0Y, projectedPt1X, projectedPt1Y );
+                // }
+            }
+            
         }
-        
-        // TODO: implement drawing here!
-        // For each model
-        //   * For each vertex
-        //     * transform endpoints to canonical view volume
-        //   * For each line segment in each edge
-        //     * clip in 3D
-        //     * project to 2D (i.e. divide the endpoints by their w component)
-        //     * translate/scale to viewport (i.e. window)
-        //     * draw line
         
     }
 
-    // Project to 2D
-    projectTo2D(vertex) {
+    homogenousToCartesian(vertex) {
         return { pt0: { x: vertex.pt0.x / vertex.pt0.w, y: vertex.pt0.y / vertex.pt0.w },
                  pt1: { x: vertex.pt1.x / vertex.pt1.w, y: vertex.pt1.y / vertex.pt1.w } };
         
