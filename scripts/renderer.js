@@ -13,13 +13,19 @@ class Renderer {
     // canvas:              object ({id: __, width: __, height: __})
     // scene:               object (...see description on Canvas)
     constructor(canvas, scene) {
-        this.canvas = canvas;
-        this.canvas = document.getElementById(canvas.id);
+        if (typeof canvas === 'string') {
+            this.canvas = document.getElementById(canvas);
+        } else if (canvas instanceof HTMLElement) {
+            this.canvas = canvas;
+        } else {
+            throw new Error("Invalid canvas argument. Must be an element ID or an HTMLElement.");
+        }
+    
         this.canvas.width = canvas.width;
         this.canvas.height = canvas.height;
         this.ctx = this.canvas.getContext('2d');
         this.scene = this.processScene(scene);
-        this.enable_animation = false;  // <-- disabled for easier debugging; enable for animation
+        this.enable_animation = false;  // disabled for easier debugging; enable for animation
         this.start_time = null;
         this.prev_time = null;
         this.rotate = new Matrix(4, 4);
@@ -28,6 +34,8 @@ class Renderer {
         this.translationfactor = 0.1;
         this.center = new Vector(3);
     }
+    
+    
 
     //
     updateTransforms(time, delta_time) {
@@ -52,53 +60,39 @@ class Renderer {
     rotateLeft() {
         let n = this.scene.view.prp.subtract(this.scene.view.srp);
         n.normalize();
-        // n = norm(PRP - SRP)
-        
         let u = this.scene.view.vup.cross(n);
         u.normalize();
-        // u = norm(VUP x n)
-    
         let v = n.cross(u);
         v.normalize();
-        // v = n x u
-
-        // You can align the u,v,n axis with x,y,z axis and use the corresponding rotation matrix
-        // rotation function to rotate the camera
-
+    
         let alignUVNMatrix = new Matrix(4, 4);
         alignUVNMatrix.values = [[u.values[0], u.values[1], u.values[2], 0],
                                  [v.values[0], v.values[1], v.values[2], 0],
                                  [n.values[0], n.values[1], n.values[2], 0],
                                  [0, 0, 0, 1]];
-
-        // R = [u1, u2, u3, 0]
-        //     [v1, v2, v3, 0]
-        //     [n1, n2, n3, 0]
-        //     [0, 0, 0, 1]
-
-        // once aligned you can then reverse it back to the original u,v,n but keep one
-        // changed one rotated value the same
-
-        this.rotate = CG.mat4x4RotateX(u, -this.rotationfactor);
+    
+        // Multiply the current rotation matrix with the alignment matrix
         this.rotate = CG.mat4x4Multiply(this.rotate, alignUVNMatrix);
     }
     
-    //
     rotateRight() {
         let n = this.scene.view.prp.subtract(this.scene.view.srp);
         n.normalize();
-        // n = norm(PRP - SRP)
-        
         let u = this.scene.view.vup.cross(n);
         u.normalize();
-        // u = norm(VUP x n)
-    
         let v = n.cross(u);
         v.normalize();
-        // v = n x u
-
-        this.rotate = CG.mat4x4RotateX(v, this.rotationfactor);
+    
+        let alignUVNMatrix = new Matrix(4, 4);
+        alignUVNMatrix.values = [[u.values[0], u.values[1], u.values[2], 0],
+                                 [v.values[0], v.values[1], v.values[2], 0],
+                                 [n.values[0], n.values[1], n.values[2], 0],
+                                 [0, 0, 0, 1]];
+    
+        // Multiply the current rotation matrix with the alignment matrix
+        this.rotate = CG.mat4x4Multiply(this.rotate, alignUVNMatrix);
     }
+    
     
     //
     moveLeft() {
@@ -187,9 +181,10 @@ class Renderer {
 
         let Nper = CG.mat4x4Perspective(this.scene.view.prp, this.scene.view.srp, this.scene.view.vup, this.scene.view.clip);
         let Mper = CG.mat4x4MPer();
+        let viewPortMatrix = CG.mat4x4Viewport(this.canvas.width, this.canvas.height);
+
 
         // create a 4x4 matrix to translate/scale projected vertices to the viewport (window)
-        let changeToViewPort = CG.mat4x4Viewport(this.canvas.width, this.canvas.height);
         let storedTransformedEndPoints = [];
         let storedLines = [];
 
@@ -202,56 +197,54 @@ class Renderer {
         // Front: z = z_min
         // Back: z = -1
 
-
-        // Extract the PRP, SRP, VUP, and clip values from the scene data
-
         // Assume you use type Generic with vertices and edges
 
         // For each model
         for (let i = 0; i < this.scene.models.length; i++) {
             // For each vertex
-            for (let vertex of this.scene.models[i].vertices) {
-                console.log(vertex);
-                // transform endpoints to canonical view volume
-                let transformedVertex = Matrix.multiply([Nper, vertex]);
-                storedTransformedEndPoints.push(transformedVertex);
+            let model = this.scene.models[i];
+            let newVertices = [];
+
+            for (let j = 0; j < model.vertices.length; j++) {
+                let vertex = model.vertices[j];
+                let perspectiveVertex = Matrix.multiply([Nper, vertex]);
+                let mPersectiveVertex = Matrix.multiply([Mper, perspectiveVertex]);
+                console.log(mPersectiveVertex);
+                console.log(perspectiveVertex);
+                newVertices.push(mPersectiveVertex);
+                
             }
 
             // For each line segment in each edge
-            for (let edge of this.scene.models[i].edges) {
-                // clip in 3D
-                // let clippedLine = this.clipLinePerspective(edge, z_min);
-                console.log(edge);
-                for (let j = 0; j < this.scene.models.edges; j++) {
-                    let edge = (j,j+1);
-                    storedLines.push(edge);
-
-                    // Matrix.multiply([nPer, this.rotate[i], this.scene.models[m].vertices[]])
-                }
-
-
-
-                // if (clippedLine) {
-                //     // project to 2D
-                //     let projectedLine = clippedLine;
-                //     let projectedPt0X = projectedLine.pt0.x;
-                //     let projectedPt0Y = projectedLine.pt0.y;
-                //     let projectedPt1X = projectedLine.pt1.x;
-                //     let projectedPt1Y = projectedLine.pt1.y;
-
-                //     // draw line
-                //     this.drawLine(projectedPt0X, projectedPt0Y, projectedPt1X, projectedPt1Y );
-                // }
+            for (let k = 0; k < model.edges.length; k++) {
+                let edges = model.edges[k];
+                for(let l = 0; l < edges.length; l++) {
+                    let vertex1 = newVertices[edges[l]];
+                    let vertex2 = newVertices[edges[l+1]];
+                    let viewPortVertex1 = Matrix.multiply([viewPortMatrix, vertex1]);
+                    let viewPortVertex2 = Matrix.multiply([viewPortMatrix, vertex2]);
+                    // this.drawLine(homogenousToCartesian(viewPortVertex1), homogenousToCartesian(viewPortVertex2));
+                    this.drawLine(viewPortVertex1.x / viewPortVertex1.w, viewPortVertex1.y / viewPortVertex1.w, viewPortVertex2.x / viewPortVertex2.w, viewPortVertex2.y / viewPortVertex2.w);
+                }     
             }
-            
         }
-        
+     
     }
+
+     // TODO: implement drawing here!
+        // For each model
+        //   * For each vertex
+        //     * transform endpoints to canonical view volume
+        //   * For each line segment in each edge
+        //     * clip in 3D
+        //     * project to 2D (i.e. divide the endpoints by their w component)
+        //     * translate/scale to viewport (i.e. window)
+        //     * draw line
+
 
     homogenousToCartesian(vertex) {
         return { pt0: { x: vertex.pt0.x / vertex.pt0.w, y: vertex.pt0.y / vertex.pt0.w },
-                 pt1: { x: vertex.pt1.x / vertex.pt1.w, y: vertex.pt1.y / vertex.pt1.w } };
-        
+                 pt1: { x: vertex.pt1.x / vertex.pt1.w, y: vertex.pt1.y / vertex.pt1.w } };   
     }
 
     // Get outcode for a vertex
@@ -292,7 +285,7 @@ class Renderer {
         let out1 = this.outcodePerspective(p1, z_min);
         
         // TODO: implement clipping here!
-        while (true) {
+        while (!result) {
             if (!(out0 | out1)) { // Bitwise OR, if both outcodes are 0, trivially accept
                 return result = { pt0: p0, pt1: p1 };
             } else if (out0 & out1) { // Bitwise AND, if not 0, trivially reject

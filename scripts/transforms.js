@@ -15,12 +15,17 @@ function mat4x4Perspective(prp, srp, vup, clip) {
     // v = n x u
 
     let VRC = new Vector(3);
-    VRC = [u, v, n];
+    VRC.values = [u, v, n];
 
     // Center of Window (CW): [left+right/2, bottom+top/2, -near]
     // DOP: CW - PRP (using VRC)
-    let CW = new Vector(3)
-    CW = [(clip[0] + clip[1]) / 2, (clip[2] + clip[3]) / 2, -clip[4]];
+    let CW = new Vector(3);
+    CW.values = [
+        (clip[0] + clip[1]) / 2 - prp.values[0],
+        (clip[2] + clip[3]) / 2 - prp.values[1],
+        -clip[4] - prp.values[2]
+    ];
+
     // let CW = new Vector.add([clip[0], clip[1], clip[2]], [clip[3], clip[4], clip[5]]).scale(0.5);
     let DOP = CW;
 
