@@ -14,8 +14,8 @@ function mat4x4Perspective(prp, srp, vup, clip) {
     v.normalize();
     // v = n x u
 
-    let VRC = new Vector(3);
-    VRC.values = [u, v, n];
+    // let VRC = new Vector(3);
+    // VRC.values = [u, v, n];
 
     // Center of Window (CW): [left+right/2, bottom+top/2, -near]
     // DOP: CW - PRP (using VRC)
@@ -31,26 +31,35 @@ function mat4x4Perspective(prp, srp, vup, clip) {
 
     // 1. translate PRP to origin
     let translatePRPorigin = new Matrix(4, 4);
-    translatePRPorigin.values = [[1, 0, 0, -prp.values[0]],
-                                [0, 1, 0, -prp.values[1]],
-                                [0, 0, 1, -prp.values[2]],
-                                [0, 0, 0, 1]];
+    mat4x4Translate(translatePRPorigin, -prp.x, -prp.y, -prp.z);
+    // translatePRPorigin.values = [[1, 0, 0, -prp.values[0]],
+    //                             [0, 1, 0, -prp.values[1]],
+    //                             [0, 0, 1, -prp.values[2]],
+    //                             [0, 0, 0, 1]];
 
     // 2. rotate VRC such that (u,v,n) align with (x,y,z)
     let rotateVRCAlignMatrix = new Matrix(4, 4);
-    rotateVRCAlignMatrix.values = [[u.values[0], u.values[1], u.values[2], 0],
-                            [v.values[0], v.values[1], v.values[2], 0],
-                            [n.values[0], n.values[1], n.values[2], 0],
-                            [0, 0, 0, 1]];
+    rotateVRCAlignMatrix.values = [[u.x, u.y, u.z, 0],
+                                [v.x, v.y, v.z, 0],
+                                [n.x, n.y, n.z, 0],
+                                [0, 0, 0, 1]];
+    // rotateVRCAlignMatrix.values = [[u.values[0], u.values[1], u.values[2], 0],
+    //                         [v.values[0], v.values[1], v.values[2], 0],
+    //                         [n.values[0], n.values[1], n.values[2], 0],
+    //                         [0, 0, 0, 1]];
     
     // 3. shear such that CW is on the z-axis
     let shearMatrixOnZ = new Matrix(4, 4);
-    let shxPer = -DOP.values[0] / DOP.values[2];
-    let shyPer = -DOP.values[1] / DOP.values[2];
-    shearMatrixOnZ.values = [[1, 0, shxPer, 0],
-                            [0, 1, shyPer, 0],
-                            [0, 0, 1, 0],
-                            [0, 0, 0, 1]];
+    let shx = -DOP.x / DOP.z;
+    let shy = -DOP.y / DOP.z;
+    mat4x4ShearXY(shearMatrixOnZ, shx, shy);
+
+    // let shxPer = -DOP.values[0] / DOP.values[2];
+    // let shyPer = -DOP.values[1] / DOP.values[2];
+    // shearMatrixOnZ.values = [[1, 0, shxPer, 0],
+    //                         [0, 1, shyPer, 0],
+    //                         [0, 0, 1, 0],
+    //                         [0, 0, 0, 1]];
     
     // 4. scale such that view volume bounds are ([z,-z], [z,-z], [-1,zmin])
     let scaleMatrix = new Matrix(4, 4);
@@ -62,9 +71,9 @@ function mat4x4Perspective(prp, srp, vup, clip) {
                         [0, 0, sPerZ, 0],
                         [0, 0, 0, 1]];
 
-    let projectionMatrix = Matrix.multiply([scaleMatrix, shearMatrixOnZ]);
-    let viewportMatrix = Matrix.multiply([rotateVRCAlignMatrix, translatePRPorigin]);
-    let transform = Matrix.multiply([projectionMatrix, viewportMatrix]);
+    // let projectionMatrix = Matrix.multiply([scaleMatrix, shearMatrixOnZ]);
+    // let viewportMatrix = Matrix.multiply([rotateVRCAlignMatrix, translatePRPorigin]);
+    let transform = Matrix.multiply([scaleMatrix, shearMatrixOnZ, rotateVRCAlignMatrix, translatePRPorigin]);
     return transform;
 }
 
