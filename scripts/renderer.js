@@ -28,7 +28,6 @@ class Renderer {
     }
     
     findCenter(vertices) {
-        // console.log(vertices);
         let sumX = 0;
         let sumY = 0;
         let sumZ = 0;
@@ -50,15 +49,12 @@ class Renderer {
                 const rps = model.animation.rps;
                 const axis = model.animation.axis;
     
-                // Initialize matrices for transformations
                 let translateToOrigin = new Matrix(4, 4);
                 let rotate = new Matrix(4, 4);
                 let translateBack = new Matrix(4, 4);
     
-                // Translate to origin
                 CG.mat4x4Translate(translateToOrigin, -center.x, -center.y, -center.z);
                 
-                // Apply rotation based on the specified axis
                 const angle = revolutions * rps * 2 * Math.PI;
                 if (axis === "y") {
                     CG.mat4x4RotateY(rotate, angle);
@@ -68,65 +64,12 @@ class Renderer {
                     CG.mat4x4RotateZ(rotate, angle);
                 }
     
-                // Translate back to original position
                 CG.mat4x4Translate(translateBack, center.x, center.y, center.z);
     
-                // Combine transformations
                 model.matrix = Matrix.multiply([translateBack, rotate, translateToOrigin]);
             }
         }
     }
-    
-    
-    
-    
-
-    //
-    // rotateLeft() {
-    //     let n = this.scene.view.prp.subtract(this.scene.view.srp);
-    //     n.normalize();
-    //     let u = this.scene.view.vup.cross(n);
-    //     u.normalize();
-    //     let v = n.cross(u);
-    //     v.normalize();
-    
-    //     let alignUVNMatrix = new Matrix(4, 4);
-    //     alignUVNMatrix.values = [
-    //         [u.values[0], u.values[1], u.values[2], 0],
-    //         [v.values[0], v.values[1], v.values[2], 0],
-    //         [n.values[0], n.values[1], n.values[2], 0],
-    //         [0, 0, 0, 1]
-    //     ];
-
-    //     let rotateMatrix = new Matrix(4, 4);
-    //     rotateMatrix = CG.mat4x4RotateY(-0.1); // Create rotation matrix
-    //     alignUVNMatrix = Matrix.multiply(alignUVNMatrix, rotateMatrix); // Apply rotation
-    
-    //     this.modelMatrix = Matrix.multiply(alignUVNMatrix, this.modelMatrix); // Update modelMatrix
-    // }
-    
-    // rotateRight() {
-    //     let n = this.scene.view.prp.subtract(this.scene.view.srp);
-    //     n.normalize();
-    //     let u = this.scene.view.vup.cross(n);
-    //     u.normalize();
-    //     let v = n.cross(u);
-    //     v.normalize();
-    
-    //     let alignUVNMatrix = new Matrix(4, 4);
-    //     alignUVNMatrix.values = [
-    //         [u.values[0], u.values[1], u.values[2], 0],
-    //         [v.values[0], v.values[1], v.values[2], 0],
-    //         [n.values[0], n.values[1], n.values[2], 0],
-    //         [0, 0, 0, 1]
-    //     ];
-        
-    //     let rotateMatrix = new Matrix(4, 4);
-    //     rotateMatrix = CG.mat4x4RotateY(0.1); // Create rotation matrix
-    //     alignUVNMatrix = Matrix.multiply(alignUVNMatrix, rotateMatrix); // Apply rotation
-    
-    //     this.modelMatrix = Matrix.multiply(alignUVNMatrix, this.modelMatrix); // Update modelMatrix
-    // }
     
 
     
@@ -196,8 +139,6 @@ class Renderer {
         point = new CG.Vector3(point.x, point.y, point.z);
         let newSRP = this.localToWorld(point);
         this.scene.view.srp = newSRP;
-
-        // this.rotateSmoothly(-0.1);
         
     }
     
@@ -214,40 +155,8 @@ class Renderer {
         let newSRP = this.localToWorld(point);
         this.scene.view.srp = newSRP;
 
-        // this.rotateSmoothly(0.1);
-    }
-
-    rotateSmoothly(angleIncrement) {
-        const totalRotation = Math.abs(angleIncrement);
-        const step = 0.01; // Adjust the step size for smoother or faster rotation
-        let currentRotation = 0;
-    
-        let timer = setInterval(() => {
-            if (currentRotation >= totalRotation) {
-                clearInterval(timer);
-            } else {
-                let rotation = Math.min(step, totalRotation - currentRotation);
-                this.applyRotation(rotation * Math.sign(angleIncrement));
-                currentRotation += rotation;
-            }
-        }, 16); // Assuming 60 frames per second
     }
     
-    applyRotation(angle) {
-        let local = this.worldToLocal(this.scene.view.srp);
-        let rotateMatrix = new Matrix(4, 4);
-        CG.mat4x4RotateY(rotateMatrix, angle);
-        let point = new CG.Vector4(local.x, local.y, local.z, 1);
-        point = Matrix.multiply([rotateMatrix, point]);
-        point = new CG.Vector3(point.x, point.y, point.z);
-        let newSRP = this.localToWorld(point);
-        this.scene.view.srp = newSRP;
-    }
-    
-    
-    
-    
-    //
     moveLeft() {
         let n = this.scene.view.prp.subtract(this.scene.view.srp);
         n.normalize();
@@ -266,7 +175,6 @@ class Renderer {
         this.scene.view.prp = this.scene.view.prp.subtract(u);
     }
     
-    //
     moveRight() {     
         let n = this.scene.view.prp.subtract(this.scene.view.srp);
         n.normalize();
@@ -285,7 +193,6 @@ class Renderer {
         this.scene.view.prp = this.scene.view.prp.add(u);
     }
     
-    //
     moveBackward() {
         let n = this.scene.view.prp.subtract(this.scene.view.srp);
         n.normalize();
@@ -304,7 +211,6 @@ class Renderer {
         this.scene.view.prp = this.scene.view.prp.add(n);
     }
     
-    //
     moveForward() {
         let n = this.scene.view.prp.subtract(this.scene.view.srp);
         n.normalize();
@@ -323,43 +229,26 @@ class Renderer {
         this.scene.view.prp = this.scene.view.prp.subtract(n);
     }
 
-    //
     draw() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        // TODO: implement drawing here!
-        // For each model
-        //   * For each vertex
-        //     * transform endpoints to canonical view volume
-        //   * For each line segment in each edge
-        //     * clip in 3D
-        //     * project to 2D (i.e. divide the endpoints by their w component)
-        //     * translate/scale to viewport (i.e. window)
-        //     * draw line
+
 
         let Nper = CG.mat4x4Perspective(this.scene.view.prp, this.scene.view.srp, this.scene.view.vup, this.scene.view.clip);
         let Mper = CG.mat4x4MPer();
 
-        // create a 4x4 matrix to translate/scale projected vertices to the viewport (window)
         let viewPortMatrix = CG.mat4x4Viewport(this.canvas.width, this.canvas.height);
         let clipOrigin = this.scene.view.clip;
 
-        // Clip against canonical view frustum
         let z_min = -(clipOrigin[4] / clipOrigin[5]);
 
-        // For each model
         for (let i = 0; i < this.scene.models.length; i++) {
             let model = this.scene.models[i];
             let vertexList = [];
-
-            // Apply transformation matrix to every vertex in list
-            // Creates a local copy
 
             for (let j = 0; j < model.vertices.length; j++) {
                 vertexList.push(Matrix.multiply([model.matrix, model.vertices[j]]));
             }
 
-            //   * For each vertex
-            //     * transform endpoints to canonical view volume
             let canonicalVertices = [];
             for (let j = 0; j < model.vertices.length; j++) {
                 canonicalVertices.push(Matrix.multiply([Nper, vertexList[j]]));
@@ -425,7 +314,6 @@ class Renderer {
         let out0 = this.outcodePerspective(p0, z_min);
         let out1 = this.outcodePerspective(p1, z_min);
         
-        // TODO: implement clipping here!
         while (true) {
             if (!(out0 | out1)) { // Bitwise OR function, if both outcodes are 0, we trivially accept
                 return result = { pt0: p0, pt1: p1 };
@@ -450,7 +338,6 @@ class Renderer {
                     x = x0 + t * deltaX;
                     y = y0 + t * deltaY;
                     z = z0 + t * deltaZ;
-                    // console.log("Clip against LEFT");
                 }
 
                 if (out & RIGHT) {
@@ -458,7 +345,6 @@ class Renderer {
                     x = x0 + t * deltaX;
                     y = y0 + t * deltaY;
                     z = z0 + t * deltaZ;
-                    // console.log("Clip against RIGHT");
                 }
 
                 if (out & BOTTOM) {
@@ -466,7 +352,6 @@ class Renderer {
                     y = y0 + t * deltaY;
                     x = x0 + t * deltaX;
                     z = z0 + t * deltaZ;
-                    // console.log("Clip against BOTTOM");
                 }
 
                 if (out & TOP) {
@@ -474,7 +359,6 @@ class Renderer {
                     y = y0 + t * deltaY;
                     x = x0 + t * deltaX;
                     z = z0 + t * deltaZ;
-                    // console.log("Clip against TOP");
                 }
 
                 if (out & NEAR) {
@@ -482,7 +366,6 @@ class Renderer {
                     z = z0 + t * deltaZ;
                     x = x0 + t * deltaX;
                     y = y0 + t * deltaY;
-                    // console.log("Clip against NEAR");
                 }
 
                 if (out & FAR) {
@@ -490,7 +373,6 @@ class Renderer {
                     z = z0 + t * deltaZ;
                     x = x0 + t * deltaX;
                     y = y0 + t * deltaY;
-                    // console.log("Clip against FAR");
                 }
 
                 if (out === out0) {
