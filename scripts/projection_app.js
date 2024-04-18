@@ -80,10 +80,15 @@ let initial_scene = {
                 [2, 7],
                 [3, 8],
                 [4, 9]
-            ]
+            ],
+            animation: {
+                axis: 'y',
+                rps: 0.2
+            }
         }
     ]
 };
+
 
 document.addEventListener('keydown', app.onKeyDown, false);
     
